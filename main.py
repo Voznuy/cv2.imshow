@@ -5,14 +5,28 @@ from ultralytics import YOLO
 import supervision as sv
 
 
-WANTED_OBJECTS = {0, 26}            # this means 'person' and 'handbag'
+class_names = [
+            'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+            'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign',
+            'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep',
+            'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella',
+            'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
+            'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
+            'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon',
+            'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+            'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant',
+            'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
+            'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
+            'book', 'clock', 'vase', 'scissors', 'teddy bear',
+            'hair drier', 'toothbrush'
+            ]
 
 
 def parse_argparse() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='YOLOv8 live')
     parser.add_argument(
         "--webcam-resolution",
-        default=[640, 480],
+        default=[1280, 720],
         nargs=2,
         type=int
     )
@@ -21,70 +35,47 @@ def parse_argparse() -> argparse.Namespace:
 
 
 def main():
-    frame_count = 0
-
-    args = parse_argparse()
-    frame_width, frame_height = args.webcam_resolution
-
-    cap = cv2.VideoCapture("rtsp://admin:pass@192.168.0.48:554")
-    # cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
-
-    model = YOLO("yolov8s.pt")
-
-    while True:
-        ret, frame = cap.read()
-
-        frame = cv2.resize(frame, (640, 480))
-
-        if frame_count % 3 == 0:  # Обробляємо кожен n кадр
-            result = model(frame)
-
-        cv2.imshow("yolov8", frame)
-        if cv2.waitKey(100) & 0xFF == ord('q'):
-            break
-
-        frame_count += 1
-
-
-def main_test():
-    frame_count = 0
     args = parse_argparse()
     frame_width, frame_height = args.webcam_resolution
 
     cap = cv2.VideoCapture("rtsp://admin:228a8831Kaf_@192.168.0.48:554")
-    # cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
 
-    model = YOLO("yolov8s.pt")
+    model = YOLO("yolov8l.pt")
 
     box_annotator = sv.BoxAnnotator(
         thickness=2,
         text_thickness=2,
         text_scale=1
     )
-
     while True:
         ret, frame = cap.read()
-        # frame = cv2.resize(frame, (640, 480))
-        if not ret:
-            continue
-        if frame_count % 3 == 0:
-            result = model.predict(frame)
-            detections = sv.Detections.from_ultralytics(result[0])
-            if detections:
-                if set(detections.class_id).intersection(WANTED_OBJECTS):
-                    frame = box_annotator.annotate(scene=frame, detections=detections)
+        results = model(frame)[0]
 
-        cv2.imshow('test',  cv2.resize(frame, (frame_width, frame_height)))
-        if cv2.waitKey(100) & 0xFF == ord('q'):
+        boxes = results.boxes.xyxy.cpu().numpy()
+
+        class_ids = results.boxes.cls.cpu().numpy()
+        confidences = results.boxes.conf.cpu().numpy()
+
+        detections = sv.Detections(
+            xyxy=boxes,
+            class_id=class_ids.astype(int),
+            confidence=confidences
+        )
+
+        labels = [class_names[int(class_id)] for class_id in detections.class_id.astype(int)]
+        frame = box_annotator.annotate(
+            scene=frame,
+            detections=detections,
+            labels=labels
+        )
+
+        cv2.imshow('test', cv2.resize(frame, (frame_width, frame_height)))
+        if cv2.waitKey(1) == ord('q'):
             break
-
-        frame_count += 1
 
 
 if __name__ == '__main__':
     # main()
-    main_test()
+    main()
