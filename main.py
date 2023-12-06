@@ -2,21 +2,26 @@ import cv2
 
 cap = cv2.VideoCapture("rtsp://admin:pass@192.168.0.48:554")
 
-if not cap.isOpened():
-    print("Не вдалося відкрити камеру.")
-    exit()
+try:
 
-while True:
-    ret, frame = cap.read()
+    if not cap.isOpened():
+        print("Не вдалося відкрити камеру.")
+        exit()
 
-    if not ret:
-        print("Не вдалося зчитати кадр.")
-        break
+    while True:
+        ret, frame = cap.read()
 
-    cv2.imshow('dIMA LoX', frame)
+        if not ret:
+            print("Не вдалося зчитати кадр.")
+            break
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        cv2.imshow('dIMA LoX', frame)
 
-cap.release()
-cv2.destroyAllWindows()
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cap.release()
+    cv2.destroyAllWindows()
+except:
+    print("Error")
+
+
